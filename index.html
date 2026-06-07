@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>音声入力SOAPノート</title>
+    <!-- Google Fonts: Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-logo">
+          <i data-lucide="activity" class="logo-icon"></i>
+          <h1>音声入力SOAPノート</h1>
+        </div>
+        <p class="subtitle">音声入力からリハビリや看護・介護のSOAP記録を自動で振り分け・生成します</p>
+      </header>
+
+      <main class="app-main">
+        <!-- 左側：音声入力・テキスト編集エリア -->
+        <section class="input-panel">
+          <div class="card card-input">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="mic-2"></i>
+                <h2>音声入力とテキスト</h2>
+              </div>
+              <div class="status-indicator" id="recording-status">
+                <span class="pulse-dot"></span>
+                <span class="status-text">音声認識中...</span>
+              </div>
+            </div>
+
+            <!-- 音声波形風アニメーション -->
+            <div class="wave-container" id="wave-container" style="display: none;">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+
+            <div class="control-buttons">
+              <button id="btn-start" class="btn btn-primary">
+                <i data-lucide="play"></i> 録音開始
+              </button>
+              <button id="btn-stop" class="btn btn-danger" disabled>
+                <i data-lucide="square"></i> 録音停止
+              </button>
+              <button id="btn-clear" class="btn btn-secondary">
+                <i data-lucide="trash-2"></i> クリア
+              </button>
+              <button id="btn-demo" class="btn btn-info">
+                <i data-lucide="sparkles"></i> デモテキスト
+              </button>
+            </div>
+
+            <div class="textarea-wrapper">
+              <label for="raw-text" class="sr-only">認識テキスト</label>
+              <textarea id="raw-text" placeholder="ここに音声認識されたテキストがリアルタイムで表示されます。手動で直接入力・編集することも可能です..." rows="12"></textarea>
+              <div class="realtime-preview" id="realtime-preview"></div>
+            </div>
+
+            <div class="action-bar">
+              <button id="btn-convert" class="btn btn-success btn-large">
+                <i data-lucide="git-branch"></i> SOAP形式に自動変換する
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右側：SOAPノート出力エリア -->
+        <section class="output-panel">
+          <div class="output-header">
+            <h3>変換結果 (SOAP)</h3>
+            <button id="btn-copy-all" class="btn btn-outline" title="すべてのセクションをコピー">
+              <i data-lucide="copy"></i> 全てコピー
+            </button>
+          </div>
+
+          <div class="soap-grid">
+            <!-- S (Subjective) -->
+            <div class="card soap-card card-s" id="soap-s-container">
+              <div class="soap-card-header">
+                <div class="soap-badge badge-s">S: 主観的情報</div>
+                <button class="btn-copy-card" data-target="soap-s-content" title="Sをコピー">
+                  <i data-lucide="copy"></i>
+                </button>
+              </div>
+              <div class="soap-card-body">
+                <ul id="soap-s-content" class="soap-list">
+                  <li class="empty-message">主観的情報（患者の自覚症状や訴え）がここに表示されます</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- O (Objective) -->
+            <div class="card soap-card card-o" id="soap-o-container">
+              <div class="soap-card-header">
+                <div class="soap-badge badge-o">O: 客観的情報</div>
+                <button class="btn-copy-card" data-target="soap-o-content" title="Oをコピー">
+                  <i data-lucide="copy"></i>
+                </button>
+              </div>
+              <div class="soap-card-body">
+                <ul id="soap-o-content" class="soap-list">
+                  <li class="empty-message">客観的情報（測定値、バイタル、検査値、観察事項）がここに表示されます</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- A (Assessment) -->
+            <div class="card soap-card card-a" id="soap-a-container">
+              <div class="soap-card-header">
+                <div class="soap-badge badge-a">A: 評価・解釈</div>
+                <button class="btn-copy-card" data-target="soap-a-content" title="Aをコピー">
+                  <i data-lucide="copy"></i>
+                </button>
+              </div>
+              <div class="soap-card-body">
+                <ul id="soap-a-content" class="soap-list">
+                  <li class="empty-message">評価（分析、解釈、制限要因、改善度合い）がここに表示されます</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- P (Plan) -->
+            <div class="card soap-card card-p" id="soap-p-container">
+              <div class="soap-card-header">
+                <div class="soap-badge badge-p">P: 治療計画</div>
+                <button class="btn-copy-card" data-target="soap-p-content" title="Pをコピー">
+                  <i data-lucide="copy"></i>
+                </button>
+              </div>
+              <div class="soap-card-body">
+                <ul id="soap-p-content" class="soap-list">
+                  <li class="empty-message">治療計画（リハビリプログラム、指示事項、指導、次回予定）がここに表示されます</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 未分類 -->
+            <div class="card soap-card card-unclassified" id="soap-u-container">
+              <div class="soap-card-header">
+                <div class="soap-badge badge-unclassified">未分類</div>
+                <button class="btn-copy-card" data-target="soap-u-content" title="未分類をコピー">
+                  <i data-lucide="copy"></i>
+                </button>
+              </div>
+              <div class="soap-card-body">
+                <ul id="soap-u-content" class="soap-list">
+                  <li class="empty-message">どのキーワードにも該当しなかった文がここに表示されます</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p>&copy; 2026 音声入力SOAPノート | Web Speech API 連携ツール</p>
+      </footer>
+    </div>
+
+    <!-- トースト通知用のコンテナ -->
+    <div id="toast" class="toast">コピーしました</div>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
